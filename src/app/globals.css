@@ -1,0 +1,193 @@
+@import "tailwindcss";
+
+/*
+  Altara Automotive — brand system
+  Monochrome luxury: obsidian black, brushed chrome, off-white.
+  Tailwind v4 is CSS-first: tokens registered in @theme auto-generate
+  utilities (bg-obsidian, text-chrome-1, border-hairline, font-heading, ...).
+*/
+
+@theme {
+  /* Surfaces (modern slate-graphite — public site default) */
+  --color-obsidian: #1c2028; /* page background */
+  --color-graphite: #262b35; /* raised surface / cards */
+  --color-steel: #333947; /* higher elevation / inputs */
+  --color-hairline: #474e5f; /* borders, 1px dividers */
+
+  /* Metal — the signature material */
+  --color-chrome-1: #f2f4f6; /* chrome highlight */
+  --color-chrome-2: #b9bfc6; /* chrome mid */
+  --color-chrome-3: #6c7278; /* chrome shadow */
+  --color-silver: #c7ccd1;
+
+  /* Text */
+  --color-ink: #f7f8fa; /* primary on dark */
+  --color-ink-muted: #b4bbc4; /* secondary */
+  --color-ink-faint: #8a919b; /* tertiary / captions */
+
+  /* Single accent — focus rings, active states, rare primary controls only */
+  --color-accent: #4c7df0;
+  --color-accent-ink: #eaf0ff;
+
+  /* Light surfaces (admin panel + optional light sections) */
+  --color-paper: #fafafb;
+  --color-paper-2: #f1f2f4;
+
+  /* Fluid type scale */
+  --text-display: clamp(2.5rem, 6vw, 5.5rem);
+  --text-h1: clamp(2rem, 4vw, 3.5rem);
+  --text-h2: clamp(1.6rem, 3vw, 2.5rem);
+}
+
+/* Fonts are provided at runtime by next/font on <html>; inline so the
+   utilities resolve directly to the CSS variables. */
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-sora);
+  --font-mono: var(--font-geist-mono, ui-monospace, monospace);
+}
+
+/*
+  Theme scopes. The public content area runs LIGHT while the hero, navbar,
+  footer and feature bands stay DARK. Because Tailwind v4 utilities reference
+  the token variables (bg-graphite → var(--color-graphite)), overriding the
+  tokens in a scope re-themes every descendant with no per-component edits.
+  `.chrome-*` flips to a dark metallic on light so prices/marks stay readable.
+*/
+.theme-light {
+  color-scheme: light;
+  --color-obsidian: #f3f5f7; /* page bg */
+  --color-graphite: #ffffff; /* cards */
+  --color-steel: #eceef1; /* inputs / subtle fills */
+  --color-hairline: #e2e6ea; /* borders */
+  --color-ink: #191c22; /* primary text */
+  --color-ink-muted: #576070; /* secondary text */
+  --color-ink-faint: #7c8698; /* tertiary text */
+  --color-chrome-1: #434955; /* dark metallic on light */
+  --color-chrome-2: #282d37;
+  --color-chrome-3: #12141a;
+}
+
+.theme-dark {
+  color-scheme: dark;
+  --color-obsidian: #1c2028;
+  --color-graphite: #262b35;
+  --color-steel: #333947;
+  --color-hairline: #474e5f;
+  --color-ink: #f7f8fa;
+  --color-ink-muted: #b4bbc4;
+  --color-ink-faint: #8a919b;
+  --color-chrome-1: #f2f4f6;
+  --color-chrome-2: #b9bfc6;
+  --color-chrome-3: #6c7278;
+}
+
+/* User theme toggle: when dark is chosen, flip the light-content scope to the
+   dark tokens (nav / hero / footer already use their own dark scope). */
+html[data-theme="dark"] .theme-light {
+  color-scheme: dark;
+  --color-obsidian: #1c2028;
+  --color-graphite: #262b35;
+  --color-steel: #333947;
+  --color-hairline: #474e5f;
+  --color-ink: #f7f8fa;
+  --color-ink-muted: #b4bbc4;
+  --color-ink-faint: #8a919b;
+  --color-chrome-1: #f2f4f6;
+  --color-chrome-2: #b9bfc6;
+  --color-chrome-3: #6c7278;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-obsidian);
+    color: var(--color-ink);
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading), var(--font-sans), sans-serif;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 35%, transparent);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Quiet scrollbar that fits the palette */
+  * {
+    scrollbar-color: var(--color-hairline) transparent;
+  }
+
+  /* Native <select> popup options — use the surface tokens so they're readable
+     in both the dark admin and the light public forms (fixes invisible options
+     on Chrome/Windows). */
+  option {
+    background-color: var(--color-graphite);
+    color: var(--color-ink);
+  }
+}
+
+/*
+  The chrome gradient — reuse everywhere the mark's material should read.
+  Applied to the logo wordmark, top-level headings, and key numerals.
+*/
+.chrome-text {
+  background: linear-gradient(
+    180deg,
+    var(--color-chrome-1) 0%,
+    var(--color-chrome-2) 45%,
+    var(--color-chrome-3) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.chrome-surface {
+  background: linear-gradient(
+    135deg,
+    var(--color-chrome-1) 0%,
+    var(--color-chrome-2) 40%,
+    var(--color-chrome-3) 100%
+  );
+}
+
+/* Hairline border helper (1px, brand grey) */
+.hairline {
+  border: 1px solid var(--color-hairline);
+}
+
+/* Tabular figures for prices / spec numerals */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Accessibility: honour reduced-motion — keep opacity, drop transforms/animation */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
