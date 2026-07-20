@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:setup": "node scripts/db-setup.mjs",
+    "db:seed-inventory": "node scripts/seed-inventory.mjs",
     "db:add-admin": "node scripts/add-admin.mjs",
     "admin:create": "node scripts/create-admin.mjs"
   },

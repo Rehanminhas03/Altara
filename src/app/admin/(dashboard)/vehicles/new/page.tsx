@@ -27,7 +27,8 @@ export default async function NewVehiclePage() {
           Add a vehicle
         </h1>
         <p className="text-sm text-ink-muted">
-          Create the listing first, then add photos on the next step.
+          Add the photos and details together — photos upload as soon as you
+          create the vehicle.
         </p>
       </div>
       <VehicleForm

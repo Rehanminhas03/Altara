@@ -128,8 +128,7 @@ export async function getInventoryFacets(): Promise<InventoryFacets> {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("vehicles")
-    .select("make, model, body_type, fuel, transmission")
-    .eq("status", "available");
+    .select("make, model, body_type, fuel, transmission");
   const rows = (data ?? []) as {
     make: string;
     model: string;
@@ -194,10 +193,9 @@ export async function searchVehicles(
   }
 
   const supabase = await createSupabaseServerClient();
-  let query = supabase
-    .from("vehicles")
-    .select(SELECT, { count: "exact" })
-    .eq("status", "available");
+  // All statuses are listed so customers can see Reserved / Sold stock with
+  // its badge (featured & latest sections still show available cars only).
+  let query = supabase.from("vehicles").select(SELECT, { count: "exact" });
 
   if (filters.make) query = query.eq("make", filters.make);
   if (filters.model) query = query.eq("model", filters.model);

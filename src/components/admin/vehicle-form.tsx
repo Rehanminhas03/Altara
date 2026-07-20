@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, X, Check } from "lucide-react";
+import { Plus, X, Check, Upload, Star } from "lucide-react";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ComboSelect } from "./combo-select";
@@ -12,7 +12,11 @@ import {
   vehicleFormSchema,
   type VehicleFormValues,
 } from "@/lib/validators/vehicle";
-import { createVehicle, updateVehicle } from "@/lib/actions/admin";
+import {
+  createVehicle,
+  updateVehicle,
+  uploadVehicleImages,
+} from "@/lib/actions/admin";
 import { BODY_TYPES, FUEL_TYPES, TRANSMISSIONS } from "@/lib/constants";
 import type { Vehicle } from "@/types";
 
@@ -73,29 +77,141 @@ export function VehicleForm({
     setFeatureInput("");
   };
 
+  // Photos picked while creating: held in the browser, uploaded once the
+  // vehicle exists (uploads need its id).
+  const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Release preview URLs when the form unmounts.
+    return () => staged.forEach((s) => URL.revokeObjectURL(s.url));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const addStaged = (files: FileList | null) => {
+    if (!files) return;
+    const next = Array.from(files).map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+    setStaged((prev) => [...prev, ...next]);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const removeStaged = (index: number) => {
+    setStaged((prev) => {
+      URL.revokeObjectURL(prev[index].url);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
   async function onSubmit(values: VehicleFormValues) {
     setServerError("");
     setSaved(false);
     const payload = { ...values, features };
-    const res =
-      mode === "create"
-        ? await createVehicle(payload)
-        : await updateVehicle(vehicle!.id, payload);
 
+    if (mode === "create") {
+      const res = await createVehicle(payload);
+      if (!res.ok) {
+        setServerError(res.error);
+        return;
+      }
+      const id = res.data?.id;
+      if (!id) {
+        setServerError("Vehicle created but no id was returned.");
+        return;
+      }
+      // Upload the photos staged while filling in the details.
+      if (staged.length > 0) {
+        const fd = new FormData();
+        staged.forEach((s) => fd.append("files", s.file));
+        const up = await uploadVehicleImages(id, fd);
+        if (!up.ok) {
+          setServerError(
+            `Vehicle created, but photos failed to upload: ${up.error}`,
+          );
+        }
+      }
+      router.push(`/admin/vehicles/${id}/edit`);
+      return;
+    }
+
+    const res = await updateVehicle(vehicle!.id, payload);
     if (!res.ok) {
       setServerError(res.error);
       return;
     }
-    if (mode === "create" && res.data && "id" in res.data) {
-      router.push(`/admin/vehicles/${res.data.id}/edit`);
-    } else {
-      setSaved(true);
-      router.refresh();
-    }
+    setSaved(true);
+    router.refresh();
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-8" noValidate>
+      {mode === "create" && (
+        <Section title="Photos">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => addStaged(e.target.files)}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-hairline bg-steel/40 px-6 py-10 text-center transition-colors hover:border-chrome-3"
+          >
+            <Upload className="h-6 w-6 text-chrome-2" aria-hidden />
+            <span className="text-sm font-medium text-ink">Add photos</span>
+            <span className="text-xs text-ink-faint">
+              JPG, PNG or WebP — the first photo becomes the main image
+            </span>
+          </button>
+
+          {staged.length > 0 && (
+            <>
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {staged.map((s, i) => (
+                  <li
+                    key={s.url}
+                    className="group relative overflow-hidden rounded-xl border border-hairline bg-graphite"
+                  >
+                    <div className="relative aspect-[4/3]">
+                      {/* Local blob preview — next/image can't optimise blob: URLs */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={s.url}
+                        alt={`Photo ${i + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      {i === 0 && (
+                        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-obsidian/80 px-2 py-0.5 text-[0.65rem] text-chrome-1 backdrop-blur">
+                          <Star className="h-3 w-3 fill-chrome-1" aria-hidden />
+                          Main
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeStaged(i)}
+                        aria-label={`Remove photo ${i + 1}`}
+                        className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-obsidian/80 text-ink backdrop-blur transition-colors hover:text-red-400"
+                      >
+                        <X className="h-4 w-4" aria-hidden />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-ink-faint">
+                {staged.length} photo{staged.length === 1 ? "" : "s"} ready —
+                they&apos;ll upload automatically when you create the vehicle.
+              </p>
+            </>
+          )}
+        </Section>
+      )}
+
       <Section title="Identity">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Title" error={errors.title?.message} required help="Without the year, e.g. “BMW M340i xDrive”">
@@ -287,7 +403,9 @@ export function VehicleForm({
       <div className="flex items-center gap-3 border-t border-hairline pt-6">
         <Button type="submit" variant="chrome" size="lg" disabled={isSubmitting}>
           {isSubmitting
-            ? "Saving…"
+            ? mode === "create" && staged.length > 0
+              ? "Creating & uploading photos…"
+              : "Saving…"
             : mode === "create"
               ? "Create vehicle"
               : "Save changes"}
